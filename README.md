@@ -198,6 +198,7 @@ A complete help is available with the -h option:
                      Optional parameter for the GPIO RTS pin number
 
       -h            Print this help summary page
+      -w            Print warranty
       -V            Print version and exit
       -v            Verbose mode.  Causes mbpoll to print debugging messages about
                     its progress.  This is helpful in debugging connection...
