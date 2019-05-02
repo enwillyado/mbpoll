@@ -883,10 +883,15 @@ main (int argc, char **argv) {
       }
       else {
         int i;
+		int error = 0;
 
         // Lecture -------------------------------------------------------------
         for (i = 0; i < ctx.iSlaveCount; i++) {
 
+          if(i > 0 && error == 0) {
+            putchar ('\n');
+          }
+		  
           modbus_set_slave (ctx.xBus, ctx.piSlaveAddr[i]);
           ctx.iTxCount++;
 
@@ -929,11 +934,12 @@ main (int argc, char **argv) {
 
           }
           if (iRet == iNbReg) {
-
+            error = 0;
             ctx.iRxCount++;
             vPrintReadValues (ctx.iStartRef, ctx.iCount, &ctx);
           }
           else {
+			error = 1;
             ctx.iErrorCount++;
             fprintf (stderr, "Read %s failed: %s\n",
                      sFunctionToStr (ctx.eFunction),
@@ -1005,9 +1011,9 @@ vPrintReadValues (int iAddr, int iCount, xMbPollContext * ctx) {
       default:  // Impossible normalement
         break;
     }
-if (ctx->bIsPolling || i + 1 < iCount) {
-    putchar ('\n');
-}
+    if (ctx->bIsPolling || i + 1 < iCount) {
+      putchar ('\n');
+    }
   }
 }
 
