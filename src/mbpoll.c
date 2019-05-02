@@ -890,14 +890,17 @@ main (int argc, char **argv) {
           modbus_set_slave (ctx.xBus, ctx.piSlaveAddr[i]);
           ctx.iTxCount++;
 
-          printf ("-- Polling slave %d...", ctx.piSlaveAddr[i]);
-          if (ctx.bIsPolling) {
+          if (false == ctx.bIsQuiet) {
 
-            printf (" Ctrl-C to stop)\n");
-          }
-          else {
+             printf ("-- Polling slave %d...", ctx.piSlaveAddr[i]);
+             
+             if (ctx.bIsPolling) {
 
-            putchar ('\n');
+               printf (" Ctrl-C to stop)\n");
+             }
+              else {
+                putchar ('\n');
+             }
           }
 
           switch (ctx.eFunction) {
@@ -1002,7 +1005,9 @@ vPrintReadValues (int iAddr, int iCount, xMbPollContext * ctx) {
       default:  // Impossible normalement
         break;
     }
+if (ctx->bIsPolling || i + 1 < iCount) {
     putchar ('\n');
+}
   }
 }
 
@@ -1193,16 +1198,17 @@ vAllocate (xMbPollContext * ctx) {
 void
 vSigIntHandler (int sig) {
 
-  if ( (ctx.bIsPolling) && (!ctx.bIsWrite)) {
-
-    printf ("--- %s poll statistics ---\n"
-            "%d frames transmitted, %d received, %d errors, %.1f%% frame loss\n",
-            ctx.sDevice,
-            ctx.iTxCount,
-            ctx.iRxCount,
-            ctx.iErrorCount,
-            (double) (ctx.iTxCount - ctx.iRxCount) * 100.0 /
-            (double) ctx.iTxCount);
+  if (false == ctx.bIsQuiet) {
+    if ( (ctx.bIsPolling) && (!ctx.bIsWrite)) {
+       printf ("--- %s poll statistics ---\n"
+               "%d frames transmitted, %d received, %d errors, %.1f%% frame loss\n",
+               ctx.sDevice,
+               ctx.iTxCount,
+               ctx.iRxCount,
+               ctx.iErrorCount,
+               (double) (ctx.iTxCount - ctx.iRxCount) * 100.0 /
+               (double) ctx.iTxCount);
+    }
   }
 
   free (ctx.pvData);
@@ -1215,7 +1221,7 @@ vSigIntHandler (int sig) {
   iChipIoClose (xChip);
 // -----------------------------------------------------------------------------
 #endif /* USE_CHIPIO defined */
-  if (sig == SIGINT) {
+  if (sig == SIGINT && false == ctx.bIsQuiet) {
     printf ("\neverything was closed.\nHave a nice day !\n");
   }
   else {
