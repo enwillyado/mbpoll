@@ -160,6 +160,7 @@ A complete help is available with the -h option:
                     data to be written by two dashes ('--'). for example :
                     mbpoll -t4:int /dev/ttyUSB0 -- 123 -1568 8974 -12
     General options : 
+      -q            quiet mode to get output as concise as possible
       -m #          mode (rtu or tcp, TCP is default)
       -a #          Slave address (1-255 for rtu, 0-255 for tcp, 1 is default)
                     for reading, it is possible to give an address list
