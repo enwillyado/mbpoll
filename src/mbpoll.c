@@ -169,6 +169,7 @@ static const int iFunctionList[] = {
 
 static const char sModeStr[] = "mode";
 static const char sSlaveAddrStr[] = "slave address";
+static const char sRegistersListStr[] = "registers list";
 static const char sRtuParityStr[] = "rtu parity";
 static const char sRtuStopbitsStr[] = "rtu stop bits";
 static const char sRtuDatabitsStr[] = "rtu data bits";
@@ -176,6 +177,7 @@ static const char sRtuBaudrateStr[] = "rtu baudrate";
 static const char sTcpPortStr[] = "tcp port";
 static const char sTimeoutStr[] = "timeout";
 static const char sPollRateStr[] = "poll rate";
+static const char sIterationPollRate[] = "iteration poll rate";
 static const char sFunctionStr[] = "function";
 static const char sFormatStr[] = "format";
 static const char sNumOfValuesStr[] = "number of values";
@@ -204,9 +206,12 @@ typedef struct xMbPollContext {
   eFormats eFormat;
   int * piSlaveAddr;
   int iSlaveCount;
+  int * piRegistersList;
+  int iRegistersCount;
   int iStartRef;
   int iCount;
   int iPollRate;
+  int iIterationPollRate;
   double dTimeout;
   char * sTcpPort;
   char * sDevice;
@@ -248,9 +253,12 @@ static xMbPollContext ctx = {
   .eFormat = eFormatDec,
   .piSlaveAddr = NULL,
   .iSlaveCount = -1,
+  .piRegistersList = NULL,
+  .iRegistersCount = -1,
   .iStartRef = DEFAULT_STARTREF,
   .iCount = DEFAULT_NUMOFVALUES,
   .iPollRate = DEFAULT_POLLRATE,
+  .iIterationPollRate = POLLRATE_MIN,
   .dTimeout = DEFAULT_TIMEOUT,
   .sTcpPort = DEFAULT_TCP_PORT,
   .sDevice = NULL,
@@ -299,14 +307,14 @@ static xChipIoSerial * xChipSerial;
 static const char sChipIoSlaveAddrStr[] = "chipio slave address";
 static const char sChipIoIrqPinStr[] = "chipio irq pin";
 // option -i et -n supplémentaires pour chipio
-static const char * short_options = "m:a:r:c:t:1l:o:p:b:d:s:P:u0RhVvwBqi:n:";
+static const char * short_options = "m:a:y:r:c:t:1l:k:o:p:b:d:s:P:u0RhVvwBqi:n:";
 
 #else /* USE_CHIPIO == 0 */
 /* constants ================================================================ */
 #ifdef MBPOLL_GPIO_RTS
-static const char * short_options = "m:a:r:c:t:1l:o:p:b:d:s:P:u0R::F::hVvwBq";
+static const char * short_options = "m:a:y:r:c:t:1l:k:o:p:b:d:s:P:u0R::F::hVvwBq";
 #else
-static const char * short_options = "m:a:r:c:t:1l:o:p:b:d:s:P:u0RFhVvwBq";
+static const char * short_options = "m:a:y:r:c:t:1l:k:o:p:b:d:s:P:u0RFhVvwBq";
 #endif
 // -----------------------------------------------------------------------------
 #endif /* USE_CHIPIO == 0 */
@@ -435,6 +443,10 @@ main (int argc, char **argv) {
         // Vérification dépend du mode
         break;
 
+      case 'y':
+        ctx.piRegistersList = iGetIntList (sRegistersListStr, optarg, &ctx.iRegistersCount);
+        break;
+
       case 'r':
         ctx.iStartRef = iGetInt (sStartRefStr, optarg, 0);
         break;
@@ -495,7 +507,15 @@ main (int argc, char **argv) {
         ctx.iPollRate = iGetInt (sPollRateStr, optarg, 0);
         if (ctx.iPollRate < POLLRATE_MIN) {
 
-          vSyntaxErrorExit ("Illegal %s: %d", sPollRateStr, ctx.iPollRate);
+          vSyntaxErrorExit ("Illegal poll rate %s: %d", sPollRateStr, ctx.iPollRate);
+        }
+        break;
+
+      case 'k':
+        ctx.iIterationPollRate = iGetInt (sIterationPollRate, optarg, 0);
+        if (ctx.iIterationPollRate < POLLRATE_MIN) {
+
+          vSyntaxErrorExit ("Illegal iteration poll rate %s: %d", sIterationPollRate, ctx.iIterationPollRate);
         }
         break;
 
@@ -882,7 +902,7 @@ main (int argc, char **argv) {
         // Fin écriture --------------------------------------------------------
       }
       else {
-        int i;
+        int i, j;
 		int error = 0;
 
         // Lecture -------------------------------------------------------------
@@ -908,47 +928,100 @@ main (int argc, char **argv) {
              }
           }
 
-          switch (ctx.eFunction) {
-            case eFuncDiscreteInput:
-              iRet = modbus_read_input_bits (ctx.xBus, iStartReg, iNbReg,
-                                             ctx.pvData);
-              break;
-
-            case eFuncCoil:
-              iRet = modbus_read_bits (ctx.xBus, iStartReg, iNbReg,
-                                       ctx.pvData);
-              break;
-
-            case eFuncInputReg:
-              iRet = modbus_read_input_registers (ctx.xBus, iStartReg, iNbReg,
-                                                  ctx.pvData);
-              break;
-
-            case eFuncHoldingReg:
-              iRet = modbus_read_registers (ctx.xBus, iStartReg, iNbReg,
-                                            ctx.pvData);
-              break;
-
-            default: // Impossible, la valeur a été vérifiée, évite un warning de gcc
-              break;
-
-          }
-          if (iRet == iNbReg) {
-            error = 0;
-            ctx.iRxCount++;
-            vPrintReadValues (ctx.iStartRef, ctx.iCount, &ctx);
+          if(ctx.iRegistersCount > 0) {
+			for (j = 0; j < ctx.iRegistersCount; j++) {
+              
+              iStartReg = ctx.piRegistersList[j]; 
+              iNbReg = 1;
+              
+              switch (ctx.eFunction) {
+                case eFuncDiscreteInput:
+                  iRet = modbus_read_input_bits (ctx.xBus, iStartReg, iNbReg,
+                                                 ctx.pvData);
+                  break;
+              
+                case eFuncCoil:
+                  iRet = modbus_read_bits (ctx.xBus, iStartReg, iNbReg,
+                                           ctx.pvData);
+                  break;
+              
+                case eFuncInputReg:
+                  iRet = modbus_read_input_registers (ctx.xBus, iStartReg, iNbReg,
+                                                      ctx.pvData);
+                  break;
+              
+                case eFuncHoldingReg:
+                  iRet = modbus_read_registers (ctx.xBus, iStartReg, iNbReg,
+                                                ctx.pvData);
+                  break;
+              
+                default: // Impossible, la valeur a été vérifiée, évite un warning de gcc
+                  break;
+              
+              }
+              if (iRet == iNbReg) {
+                error = 0;
+                ctx.iRxCount++;
+                vPrintReadValues (iStartReg, 1, &ctx);
+              }
+              else {
+                error = 1;
+                ctx.iErrorCount++;
+                fprintf (stderr, "Read %s failed: %s\n",
+                         sFunctionToStr (ctx.eFunction),
+                         modbus_strerror (errno));
+              }
+			  
+              if (!ctx.bIsPolling && j + 1 < ctx.iRegistersCount) {
+                putchar ('\n');
+              }
+              mb_delay (ctx.iIterationPollRate);
+			}
           }
           else {
-            error = 1;
-            ctx.iErrorCount++;
-            fprintf (stderr, "Read %s failed: %s\n",
-                     sFunctionToStr (ctx.eFunction),
-                     modbus_strerror (errno));
-          }
-          if (ctx.bIsPolling) {
 
-            mb_delay (ctx.iPollRate);
-          }
+            switch (ctx.eFunction) {
+              case eFuncDiscreteInput:
+                iRet = modbus_read_input_bits (ctx.xBus, iStartReg, iNbReg,
+                                               ctx.pvData);
+                break;
+           
+              case eFuncCoil:
+                iRet = modbus_read_bits (ctx.xBus, iStartReg, iNbReg,
+                                         ctx.pvData);
+                break;
+           
+              case eFuncInputReg:
+                iRet = modbus_read_input_registers (ctx.xBus, iStartReg, iNbReg,
+                                                    ctx.pvData);
+                break;
+           
+              case eFuncHoldingReg:
+                iRet = modbus_read_registers (ctx.xBus, iStartReg, iNbReg,
+                                              ctx.pvData);
+                break;
+           
+              default: // Impossible, la valeur a été vérifiée, évite un warning de gcc
+                break;
+           
+            }
+            if (iRet == iNbReg) {
+              error = 0;
+              ctx.iRxCount++;
+              vPrintReadValues (ctx.iStartRef, ctx.iCount, &ctx);
+            }
+            else {
+              error = 1;
+              ctx.iErrorCount++;
+              fprintf (stderr, "Read %s failed: %s\n",
+                       sFunctionToStr (ctx.eFunction),
+                       modbus_strerror (errno));
+            }
+            if (ctx.bIsPolling) {
+
+              mb_delay (ctx.iPollRate);
+            }
+		  }
         }
         // Fin lecture ---------------------------------------------------------
       }
@@ -1097,20 +1170,22 @@ vPrintCommunicationSetup (const xMbPollContext * ctx) {
 #endif /* USE_CHIPIO defined */
 
     printf ("Communication.........: %s%s, %s\n"
-            "                        t/o %.2f s, poll rate %d ms\n"
+            "                        t/o %.2f s, poll rate %d ms, iteration rate %d ms\n"
             , ctx->sDevice
             , sAddStr
             , sSerialAttrToStr (&ctx->xRtu)
             , ctx->dTimeout
-            , ctx->iPollRate);
+            , ctx->iPollRate
+            , ctx->iIterationPollRate);
   }
   else {
 
-    printf ("Communication.........: %s, port %s, t/o %.2f s, poll rate %d ms\n"
+    printf ("Communication.........: %s, port %s, t/o %.2f s, poll rate %d ms, iteration rate %d ms\n"
             , ctx->sDevice
             , ctx->sTcpPort
             , ctx->dTimeout
-            , ctx->iPollRate);
+            , ctx->iPollRate
+            , ctx->iIterationPollRate);
   }
 }
 
@@ -1342,6 +1417,10 @@ vUsage (FILE * stream, int exit_msg) {
            "                -a 32,33,34,36:40 read [32,33,34,36,37,38,39,40]\n"
            "  -r #          Start reference (%d is default)\n"
            "  -c #          Number of values to read (%d-%d, %d is default)\n"
+           "  -y #          Absolute reference for each values to read\n"
+           "                It is possible to give an address list\n"
+           "                separated by commas or colons, for example :\n"
+           "                -y 12,33,34,136:140 read [12,33,34,136,137,138,139,140]\n"
            "  -u            Read the description of the type, the current status, and other\n"
            "                information specific to a remote device (RTU only)\n"
            "  -t 0          Discrete output (coil) data type (binary 0 or 1)\n"
@@ -1362,6 +1441,7 @@ vUsage (FILE * stream, int exit_msg) {
            "  -B            Big endian word order for 32-bit integer and float\n"
            "  -1            Poll only once only, otherwise every poll rate interval\n"
            "  -l #          Poll rate in ms, ( > %d, %d is default)\n"
+           "  -k #          Poll rate for each random register (-y iteration) in ms, ( > %d, %d is default)\n"
            "  -o #          Time-out in seconds (%.2f - %.2f, %.2f s is default)\n"
            "Options for ModBus / TCP : \n"
            "  -p #          TCP port number (%s is default)\n"
@@ -1403,6 +1483,8 @@ vUsage (FILE * stream, int exit_msg) {
            , DEFAULT_NUMOFVALUES
            , POLLRATE_MIN
            , DEFAULT_POLLRATE
+           , POLLRATE_MIN
+           , POLLRATE_MIN
            , TIMEOUT_MIN
            , TIMEOUT_MAX
            , DEFAULT_TIMEOUT

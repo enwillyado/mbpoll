@@ -168,6 +168,10 @@ A complete help is available with the -h option:
                     -a 32,33,34,36:40 read [32,33,34,36,37,38,39,40]
       -r #          Start reference (1 is default)
       -c #          Number of values to read (1-125, 1 is default)
+      -y #          Absolute reference for each values to read
+                    it is possible to give an address list
+                    separated by commas or colons, for example :
+                    -y 12,33,34,136:140 read [12,33,34,136,137,138,139,140]
       -u            Read the description of the type, the current status, and other
                     information specific to a remote device (RTU only)
       -t 0          Discrete output (coil) data type (binary 0 or 1)
@@ -184,6 +188,7 @@ A complete help is available with the -h option:
       -B            Big endian word order for 32-bit integer and float
       -1            Poll only once only, otherwise every poll rate interval
       -l #          Poll rate in ms, ( > 100, 1000 is default)
+      -k #          Poll rate for each random register (-y iteration) in ms, ( > 100, 100 is default)
       -o #          Time-out in seconds (0.01 - 10.00, 1.00 s is default)
     Options for ModBus / TCP : 
       -p #          TCP port number (502 is default)
