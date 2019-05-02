@@ -939,7 +939,7 @@ main (int argc, char **argv) {
             vPrintReadValues (ctx.iStartRef, ctx.iCount, &ctx);
           }
           else {
-			error = 1;
+            error = 1;
             ctx.iErrorCount++;
             fprintf (stderr, "Read %s failed: %s\n",
                      sFunctionToStr (ctx.eFunction),
