@@ -1328,6 +1328,7 @@ vUsage (FILE * stream, int exit_msg) {
   fprintf (stream,
 //          01234567890123456789012345678901234567890123456789012345678901234567890123456789
            "General options : \n"
+           "  -q            quiet mode to get output as concise as possible\n"
            "  -m #          mode (rtu or tcp, %s is default)\n"
            "  -a #          Slave address (%d-%d for rtu, %d-%d for tcp, %d is default)\n"
            "                for reading, it is possible to give an address list\n"
