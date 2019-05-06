@@ -87,6 +87,11 @@ typedef enum {
   eFormatUnknown = -1,
 } eFormats;
 
+typedef enum {
+  eOutFormatOriginal,
+  eOutFormatJson,
+} eOutFormats;
+
 /* macros =================================================================== */
 #define SIZEOF_ILIST(list) (sizeof(list)/sizeof(int))
 /*
@@ -204,6 +209,7 @@ typedef struct xMbPollContext {
   eModes eMode;
   eFunctions eFunction;
   eFormats eFormat;
+  eOutFormats eOutFormat;
   int * piSlaveAddr;
   int iSlaveCount;
   int * piRegistersList;
@@ -251,6 +257,7 @@ static xMbPollContext ctx = {
   .eMode = DEFAULT_MODE,
   .eFunction = DEFAULT_FUNCTION,
   .eFormat = eFormatDec,
+  .eOutFormat = eOutFormatOriginal,
   .piSlaveAddr = NULL,
   .iSlaveCount = -1,
   .piRegistersList = NULL,
@@ -307,14 +314,14 @@ static xChipIoSerial * xChipSerial;
 static const char sChipIoSlaveAddrStr[] = "chipio slave address";
 static const char sChipIoIrqPinStr[] = "chipio irq pin";
 // option -i et -n supplémentaires pour chipio
-static const char * short_options = "m:a:y:r:c:t:1l:k:o:p:b:d:s:P:u0RhVvwBqi:n:";
+static const char * short_options = "m:a:y:r:c:t:j1l:k:o:p:b:d:s:P:u0RhVvwBqi:n:";
 
 #else /* USE_CHIPIO == 0 */
 /* constants ================================================================ */
 #ifdef MBPOLL_GPIO_RTS
-static const char * short_options = "m:a:y:r:c:t:1l:k:o:p:b:d:s:P:u0R::F::hVvwBq";
+static const char * short_options = "m:a:y:r:c:t:j1l:k:o:p:b:d:s:P:u0R::F::hVvwBq";
 #else
-static const char * short_options = "m:a:y:r:c:t:1l:k:o:p:b:d:s:P:u0RFhVvwBq";
+static const char * short_options = "m:a:y:r:c:t:j1l:k:o:p:b:d:s:P:u0RFhVvwBq";
 #endif
 // -----------------------------------------------------------------------------
 #endif /* USE_CHIPIO == 0 */
@@ -430,6 +437,10 @@ main (int argc, char **argv) {
       case 'v':
         ctx.bIsVerbose = true;
         PDEBUG ("debug enabled\n");
+        break;
+		
+      case 'j':
+        ctx.eOutFormat = eOutFormatJson;
         break;
 
       case 'm':
@@ -1040,9 +1051,18 @@ main (int argc, char **argv) {
 void
 vPrintReadValues (int iAddr, int iCount, xMbPollContext * ctx) {
   int i;
+  
+  if(ctx->eOutFormat == eOutFormatJson) {
+    printf ("{");
+  }
+  
   for (i = 0; i < iCount; i++) {
 
-    printf ("[%d]: \t", iAddr);
+    if(ctx->eOutFormat == eOutFormatOriginal) {
+      printf ("[%d]: \t", iAddr);
+    } else {
+      printf ("%d:", iAddr);
+    }
 
     switch (ctx->eFormat) {
 
@@ -1085,7 +1105,20 @@ vPrintReadValues (int iAddr, int iCount, xMbPollContext * ctx) {
         break;
     }
     if (ctx->bIsPolling || i + 1 < iCount) {
-      putchar ('\n');
+      if(ctx->eOutFormat == eOutFormatOriginal) {
+        putchar ('\n');
+      } else {
+        if(i + 1 < iCount) {
+          putchar (',');
+        }
+      }
+    }
+  }
+  
+  if(ctx->eOutFormat == eOutFormatJson) {
+    printf ("}");
+    if (ctx->bIsPolling) {
+        putchar ('\n');
     }
   }
 }
@@ -1467,6 +1500,7 @@ vUsage (FILE * stream, int exit_msg) {
 // -----------------------------------------------------------------------------
 #endif /* USE_CHIPIO defined */
            "\n"
+           "  -j            Print values using json out format (for each line)\n"
            "  -h            Print this help summary page\n"
            "  -V            Print version and exit\n"
            "  -v            Verbose mode.  Causes %s to print debugging messages about\n"

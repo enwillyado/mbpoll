@@ -202,6 +202,7 @@ A complete help is available with the -h option:
       -F [#]        RS-485 mode (/RTS on (0) when sending)
                      Optional parameter for the GPIO RTS pin number
 
+      -j            Print values using json out format
       -h            Print this help summary page
       -w            Print warranty
       -V            Print version and exit
