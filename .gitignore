@@ -10,3 +10,7 @@ compile_commands.json
 obj/
 .*
 version.*
+*.cmake
+/CMakeFiles/
+/CMakeCache.txt
+/mbpoll
