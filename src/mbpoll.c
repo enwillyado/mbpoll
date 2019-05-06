@@ -90,6 +90,7 @@ typedef enum {
 typedef enum {
   eOutFormatOriginal,
   eOutFormatJson,
+  eOutFormatJsonValues,
 } eOutFormats;
 
 /* macros =================================================================== */
@@ -314,14 +315,14 @@ static xChipIoSerial * xChipSerial;
 static const char sChipIoSlaveAddrStr[] = "chipio slave address";
 static const char sChipIoIrqPinStr[] = "chipio irq pin";
 // option -i et -n supplémentaires pour chipio
-static const char * short_options = "m:a:y:r:c:t:j1l:k:o:p:b:d:s:P:u0RhVvwBqi:n:";
+static const char * short_options = "m:a:y:r:c:t:jJ1l:k:o:p:b:d:s:P:u0RhVvwBqi:n:";
 
 #else /* USE_CHIPIO == 0 */
 /* constants ================================================================ */
 #ifdef MBPOLL_GPIO_RTS
-static const char * short_options = "m:a:y:r:c:t:j1l:k:o:p:b:d:s:P:u0R::F::hVvwBq";
+static const char * short_options = "m:a:y:r:c:t:jJ1l:k:o:p:b:d:s:P:u0R::F::hVvwBq";
 #else
-static const char * short_options = "m:a:y:r:c:t:j1l:k:o:p:b:d:s:P:u0RFhVvwBq";
+static const char * short_options = "m:a:y:r:c:t:jJ1l:k:o:p:b:d:s:P:u0RFhVvwBq";
 #endif
 // -----------------------------------------------------------------------------
 #endif /* USE_CHIPIO == 0 */
@@ -441,6 +442,10 @@ main (int argc, char **argv) {
 		
       case 'j':
         ctx.eOutFormat = eOutFormatJson;
+        break;
+		
+      case 'J':
+        ctx.eOutFormat = eOutFormatJsonValues;
         break;
 
       case 'm':
@@ -1073,7 +1078,7 @@ vPrintReadValues (int iAddr, int iCount, xMbPollContext * ctx) {
 
       case eFormatDec: {
         uint16_t v = DUINT16 (ctx->pvData, i);
-        if (v & 0x8000) {
+        if (v & 0x8000 && ctx->eOutFormat == eOutFormatOriginal) {
 
           printf ("%u (%d)", v, (int) (int16_t) v);
         }
@@ -1104,22 +1109,20 @@ vPrintReadValues (int iAddr, int iCount, xMbPollContext * ctx) {
       default:  // Impossible normalement
         break;
     }
-    if (ctx->bIsPolling || i + 1 < iCount) {
+    if (i + 1 < iCount) {
       if(ctx->eOutFormat == eOutFormatOriginal) {
         putchar ('\n');
       } else {
-        if(i + 1 < iCount) {
-          putchar (',');
-        }
+        putchar (',');
       }
     }
   }
   
-  if(ctx->eOutFormat == eOutFormatJson) {
-    printf ("}");
-    if (ctx->bIsPolling) {
-        putchar ('\n');
+  if (ctx->bIsPolling) {
+    if(ctx->eOutFormat == eOutFormatJson) {
+      printf ("}");
     }
+    putchar ('\n');
   }
 }
 
@@ -1501,6 +1504,7 @@ vUsage (FILE * stream, int exit_msg) {
 #endif /* USE_CHIPIO defined */
            "\n"
            "  -j            Print values using json out format (for each line)\n"
+           "  -J            Print values using json values format (for each value)\n"
            "  -h            Print this help summary page\n"
            "  -V            Print version and exit\n"
            "  -v            Verbose mode.  Causes %s to print debugging messages about\n"
